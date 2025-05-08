@@ -10,6 +10,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -35,6 +36,11 @@ class JmxMetrics {
     }
 
     runner = new GroovyRunner(config, jmxClient, new GroovyMetricEnvironment(config));
+  }
+
+  @Override
+  public String toString() {
+    return "JmxMetrics{" + "config=" + config + ", runner=" + runner + ", exec=" + exec + '}';
   }
 
   private void start() {
@@ -106,19 +112,52 @@ class JmxMetrics {
    * @param args - must be of the form "-config {jmx_config_path,'-'}"
    */
   public static void main(final String[] args) {
-    JmxConfig config = getConfigFromArgs(args);
-    config.validate();
+    //        JmxConfig config = getConfigFromArgs(args);
+    //        config.validate();
+    //
+    //        final JmxMetrics jmxMetrics = new JmxMetrics(config);
+    //        jmxMetrics.start();
+    //
+    //        Runtime.getRuntime()
+    //            .addShutdownHook(
+    //                new Thread() {
+    //                  @Override
+    //                  public void run() {
+    //                    jmxMetrics.shutdown();
+    //                  }
+    //                });
 
-    final JmxMetrics jmxMetrics = new JmxMetrics(config);
-    jmxMetrics.start();
+    try {
+      Map<String, Properties> configMap = ConfigParser.parseConfig("/tmp/config.properties");
 
-    Runtime.getRuntime()
-        .addShutdownHook(
-            new Thread() {
-              @Override
-              public void run() {
-                jmxMetrics.shutdown();
-              }
-            });
+      JmxConfig multiConfig = new JmxConfig(configMap);
+
+      for (String key : multiConfig.getConfigKeys()) {
+
+        JmxConfig config = multiConfig.getConfig(key);
+        System.out.println("Config: " + config);
+        System.out.println("Key: " + key);
+
+        final JmxMetrics jmxMetrics = new JmxMetrics(config);
+
+        System.out.println("JmxMetrics: " + jmxMetrics);
+
+        config.validate();
+        jmxMetrics.start();
+
+        Runtime.getRuntime()
+            .addShutdownHook(
+                new Thread() {
+                  @Override
+                  public void run() {
+                    jmxMetrics.shutdown();
+                  }
+                });
+      }
+
+    } catch (IOException e) {
+      System.out.println("Failed to read config properties from stdin: " + e.getMessage());
+      System.exit(1);
+    }
   }
 }

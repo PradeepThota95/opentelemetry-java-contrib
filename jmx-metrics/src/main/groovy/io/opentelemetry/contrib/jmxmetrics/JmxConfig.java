@@ -6,8 +6,10 @@
 package io.opentelemetry.contrib.jmxmetrics;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
@@ -80,6 +82,8 @@ class JmxConfig {
 
   final boolean aggregateAcrossMBeans;
 
+  private final Map<String, Properties> multiConfig;
+
   JmxConfig(final Properties props) {
     properties = new Properties();
     // putAll() instead of using constructor defaults
@@ -132,10 +136,50 @@ class JmxConfig {
             System.setProperty(key, value);
           }
         });
+    this.multiConfig = new HashMap<>();
   }
 
-  JmxConfig() {
-    this(new Properties());
+  public JmxConfig(final Map<String, Properties> config) {
+    this.multiConfig = new HashMap<>(config);
+    this.properties = new Properties();
+    this.serviceUrl = null;
+    this.groovyScript = null;
+    this.targetSystem = null;
+    this.targetSystems = null;
+    this.intervalMilliseconds = 0;
+    this.metricsExporterType = null;
+    this.otlpExporterEndpoint = null;
+    this.prometheusExporterHost = null;
+    this.prometheusExporterPort = 0;
+    this.username = null;
+    this.password = null;
+    this.realm = null;
+    this.remoteProfile = null;
+    this.registrySsl = false;
+    this.aggregateAcrossMBeans = false;
+
+    // this(new Properties());
+  }
+
+  public JmxConfig getConfig(String key) {
+    Properties props = multiConfig.get(key);
+    if (props == null) {
+      throw new ConfigurationException("No configuration found for " + key);
+    }
+    return new JmxConfig(props);
+  }
+
+  @Override
+  public String toString() {
+    StringBuilder sb = new StringBuilder();
+    for (String key : properties.stringPropertyNames()) {
+      sb.append(key).append(" = ").append(properties.getProperty(key)).append("\n");
+    }
+    return sb.toString();
+  }
+
+  public Set<String> getConfigKeys() {
+    return multiConfig.keySet();
   }
 
   private int getProperty(final String key, final int dfault) {
